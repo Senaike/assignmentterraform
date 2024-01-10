@@ -1,23 +1,56 @@
-module "vpc" {
-    source = "./modules/vpc"
-    vpc_cidr = var.vpc_cidr
-    subnet_cidr = var.subnet_cidr
-     
-}
-module "sg" {
-    source = "./modules/sg"
-    vpc_id = module.vpc.vpc.id  
-}
+#vpc
+resource "aws_vpc" "my_vpc" {
+    cidr_block = var.vpc_cidr
+    instance_tenancy = "default"
 
-module "ec2" {
-    source = "./modules/ec2 "
 
+    tags = {
+      "Name" = "my_vpc"
+    } 
 }
 
+#subnet
+resource "aws_subnet" "subnets" {
+    count = length(var.subnet_cidr)
+    vpc_id =  aws_vpc.my_vpc.id 
+    cidr_block = var.subnet_cidr[count.index]
+    availability_zone = data.aws_availability_zone.available.names[count.index]
+    
+    map_public_ip_on_launch = true
 
-module "alb" {
-    source = "./modules/alb"
-    sg_id = module.sg.sg_id
-    subnets =module.vpc.subnet_ids
+    tags = {
+      Name =var.subnet_names[count.index]
+    }
+  
+}
 
+
+#internet gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.my_vpc.id
+
+  tags = {
+    Name = "MyInternetGateway"
+  }
+  
+}
+
+
+
+#route table 
+resource "aws_route_table" "rt" {
+    vpc_id = aws_vpc.my_vpc.id
+
+    route {
+        cidr_block = "0.0.0.0/0"
+        gateway_id = aws_internet_gateway.igw.id
+    }
+  
+}
+
+#route table association
+resource "aws_route_table_association" "rta" {
+    count = length(var.subnet_cidr)
+    subnet_id =  aws_subnet.subnets[count.index].id
+     route_table_id = aws_route_table.rt.id
 }
