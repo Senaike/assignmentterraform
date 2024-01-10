@@ -1,27 +1,23 @@
-# main.tf - us-east-1 region
-provider "aws" {
-  alias = "Abbey"
-  region = "us-east-1"
+module "vpc" {
+    source = "./modules/vpc"
+    vpc_cidr = var.vpc_cidr
+    subnet_cidr = var.subnet_cidr
+     
+}
+module "sg" {
+    source = "./modules/sg"
+    vpc_id = module.vpc.vpc.id  
 }
 
-resource "aws_instance" "region1" {
-  ami           = "ami-0fc5d935ebf8bc3bc"
-  instance_type = "t2.micro"
-  tags = {
-    Name = "region1"
-  }
+module "ec2" {
+    source = "./modules/ec2 "
+
 }
 
-# main-us-west-2.tf - us-west-2 region
-provider "aws" {
-  alias = "Senaike"  
-  region = "us-west-2"
-}
 
-resource "aws_instance" "region2" {
-  ami           = "ami-0fc5d935ebf8bc3bc"
-  instance_type = "t2.micro"
-  tags = {
-    Name = "region2"
-  }
+module "alb" {
+    source = "./modules/alb"
+    sg_id = module.sg.sg_id
+    subnets =module.vpc.subnet_ids
+
 }
